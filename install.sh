@@ -55,19 +55,19 @@ sudo apt-get install -y python3 python3-venv python3-pip ffmpeg alsa-utils
 # Camara: el binario puede ser libcamera-vid (Bullseye) o rpicam-vid (Bookworm).
 if ! command -v libcamera-vid >/dev/null 2>&1 && ! command -v rpicam-vid >/dev/null 2>&1; then
     echo "==> Instalando apps de camara..."
-    sudo apt-get install -y libcamera-apps 2>/dev/null \
-        || sudo apt-get install -y rpicam-apps 2>/dev/null \
-        || echo "AVISO: no se pudo instalar libcamera-apps/rpicam-apps automaticamente."
+    sudo apt-get install -y rpicam-apps 2>/dev/null \
+        || sudo apt-get install -y libcamera-apps 2>/dev/null \
+        || echo "AVISO: no se pudo instalar rpicam-apps/libcamera-apps automaticamente."
 fi
 
-# Detectar el binario de camara disponible y avisar si difiere del default.
-if command -v libcamera-vid >/dev/null 2>&1; then
-    echo "    Camara: usando 'libcamera-vid'."
-elif command -v rpicam-vid >/dev/null 2>&1; then
-    echo "    Camara: detectado 'rpicam-vid'. Configura VIDEO_BIN=rpicam-vid en .env"
-    echo "            (copia .env.example a .env y descomenta esa linea)."
+# La app auto-detecta el binario de camara (rpicam-vid o libcamera-vid).
+if command -v rpicam-vid >/dev/null 2>&1; then
+    echo "    Camara: detectado 'rpicam-vid' (se usa automaticamente)."
+elif command -v libcamera-vid >/dev/null 2>&1; then
+    echo "    Camara: detectado 'libcamera-vid' (se usa automaticamente)."
 else
-    echo "    AVISO: no se encontro libcamera-vid ni rpicam-vid. Instalalo antes de transmitir."
+    echo "    AVISO: no se encontro rpicam-vid ni libcamera-vid."
+    echo "    Instala las apps de camara con:  sudo apt install -y rpicam-apps"
 fi
 
 # -----------------------------------------------------------------------------

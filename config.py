@@ -19,6 +19,7 @@ Autor: Andres Mercado
 """
 
 import os
+import shutil
 from pathlib import Path
 
 # ==============================================================================
@@ -70,9 +71,18 @@ STREAM_TITLE = os.environ.get("STREAM_TITLE", "rpi-youtube-stream")
 # ==============================================================================
 # SECCION 3: VIDEO (LIBCAMERA-VID)
 # ==============================================================================
-# Binario de captura. En Raspberry Pi OS Bookworm puede ser "rpicam-vid".
+# Binario de captura de la camara. En Raspberry Pi OS reciente (Bookworm/Trixie)
+# es "rpicam-vid"; en versiones anteriores, "libcamera-vid". Se auto-detecta el
+# que exista; se puede forzar con la variable de entorno VIDEO_BIN.
 
-VIDEO_BIN = os.environ.get("VIDEO_BIN", "libcamera-vid")
+def _detect_video_bin():
+    for candidate in ("rpicam-vid", "libcamera-vid"):
+        if shutil.which(candidate):
+            return candidate
+    return "libcamera-vid"
+
+
+VIDEO_BIN = os.environ.get("VIDEO_BIN") or _detect_video_bin()
 VIDEO_WIDTH = 2028
 VIDEO_HEIGHT = 1080
 VIDEO_FPS = 50
