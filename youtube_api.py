@@ -371,6 +371,20 @@ def _now_iso():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
 
+def get_channel_info():
+    """Devuelve {'id', 'title'} del canal de YouTube vinculado al token actual."""
+    youtube = _get_youtube_service()
+    response = youtube.channels().list(part="snippet", mine=True).execute()
+    items = response.get("items", [])
+    if not items:
+        return None
+    channel = items[0]
+    return {
+        "id": channel["id"],
+        "title": channel.get("snippet", {}).get("title", ""),
+    }
+
+
 # ==============================================================================
 # SECCION 7: STREAMS Y BROADCASTS
 # ==============================================================================

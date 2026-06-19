@@ -106,6 +106,8 @@ const dom = {
     wifiPassword: document.getElementById("wifi-password"),
     btnWifiConnect: document.getElementById("btn-wifi-connect"),
     wifiMessage: document.getElementById("wifi-message"),
+    channelName: document.getElementById("channel-name"),
+    btnUnlink: document.getElementById("btn-unlink"),
 };
 
 // Variable global para broadcast_id actual
@@ -120,6 +122,7 @@ let logsVisible = false;
 let logsInterval = null;
 let visitorsInterval = null;
 let advInitialized = false;
+let channelFetched = false;
 
 // ==============================================================================
 // SECCION 3: AVISO DE VINCULACION
@@ -180,8 +183,14 @@ function updateUI(data) {
     if (!authorized) {
         showAuthWarning();
         dom.btnStart.disabled = true;
+        channelFetched = false;
+        dom.channelName.textContent = "Canal vinculado: (sin vincular)";
     } else {
         hideAuthWarning();
+        if (!channelFetched) {
+            channelFetched = true;
+            fetchChannel();
+        }
     }
 
     // Microphone warning (se omite si "transmitir sin microfono" esta activo)
@@ -671,6 +680,36 @@ dom.btnWifiConnect.addEventListener("click", async () => {
     } finally {
         dom.btnWifiConnect.disabled = false;
         dom.btnWifiConnect.textContent = "Conectar a WiFi";
+    }
+});
+
+// ---- Cuenta: mostrar canal vinculado ----
+async function fetchChannel() {
+    try {
+        const res = await fetch("/api/channel");
+        const data = await res.json();
+        if (res.ok && data.title) {
+            dom.channelName.textContent = `Canal vinculado: ${data.title}`;
+        } else {
+            dom.channelName.textContent = "Canal vinculado: no disponible";
+        }
+    } catch {
+        dom.channelName.textContent = "Canal vinculado: no disponible";
+    }
+}
+
+// ---- Cuenta: desvincular y volver a vincular ----
+dom.btnUnlink.addEventListener("click", async () => {
+    if (!confirm("Esto desvincula la cuenta actual. Tendrás que iniciar sesión de nuevo y elegir el canal. ¿Continuar?")) {
+        return;
+    }
+    dom.btnUnlink.disabled = true;
+    try {
+        await fetch("/api/auth/unlink", { method: "POST" });
+        window.location.href = "/auth";
+    } catch {
+        dom.btnUnlink.disabled = false;
+        alert("No se pudo desvincular. Intenta de nuevo.");
     }
 });
 

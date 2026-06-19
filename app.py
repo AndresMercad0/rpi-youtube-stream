@@ -449,6 +449,20 @@ def auth_unlink():
     return jsonify({"ok": True})
 
 
+@app.route("/api/channel")
+def api_channel():
+    """Canal de YouTube vinculado al token actual (diagnostico)."""
+    if not youtube_api.is_authorized():
+        return jsonify({"error": "No hay cuenta vinculada."}), 401
+    try:
+        info = youtube_api.get_channel_info()
+    except Exception as e:
+        return jsonify({"error": f"No se pudo obtener el canal: {e}"}), 500
+    if not info:
+        return jsonify({"error": "La cuenta no tiene un canal de YouTube."}), 404
+    return jsonify(info)
+
+
 # ==============================================================================
 # SECCION 9B: AJUSTES Y RED (OPCIONES AVANZADAS)
 # ==============================================================================
