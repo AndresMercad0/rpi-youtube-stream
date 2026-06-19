@@ -125,6 +125,29 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# Permiso de red para la funcion de WiFi (sudo acotado a nmcli)
+# -----------------------------------------------------------------------------
+echo
+echo "==> Configurando permiso de red para conectar WiFi desde la app..."
+if command -v nmcli >/dev/null 2>&1; then
+    NMCLI_PATH="$(command -v nmcli)"
+    SUDOERS_FILE="/etc/sudoers.d/rpi-youtube-stream"
+    sudo tee "$SUDOERS_FILE" >/dev/null <<EOF
+$RUN_USER ALL=(root) NOPASSWD: $NMCLI_PATH
+EOF
+    sudo chmod 0440 "$SUDOERS_FILE"
+    if sudo visudo -c -f "$SUDOERS_FILE" >/dev/null 2>&1; then
+        echo "    Permiso configurado: la app puede conectar a WiFi via nmcli."
+    else
+        echo "    AVISO: la regla sudoers no es valida; se elimina por seguridad."
+        sudo rm -f "$SUDOERS_FILE"
+    fi
+else
+    echo "    AVISO: nmcli (NetworkManager) no esta instalado."
+    echo "    La conexion WiFi desde la app no estara disponible en este sistema."
+fi
+
+# -----------------------------------------------------------------------------
 # 5. Servicio systemd
 # -----------------------------------------------------------------------------
 echo

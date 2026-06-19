@@ -1,6 +1,7 @@
 # Secretos y datos locales (NUNCA versionar)
 .youtube_tokens.json
 .visitors.csv
+.settings.json
 .env
 
 # Entorno virtual de Python

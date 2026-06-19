@@ -37,6 +37,8 @@ from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 import config
+import network
+import settings
 import youtube_api
 from stream_manager import StreamManager
 
@@ -218,6 +220,8 @@ def status():
         "auth_error": None if authorized else youtube_api.AUTH_REQUIRED_MESSAGE,
         "microphone_connected": mic_connected,
         "microphone_message": mic_message,
+        "allow_no_mic": settings.get("allow_no_mic", False),
+        "connection": network.status(),
         "error": manager.error_message,
     })
 
@@ -242,12 +246,16 @@ def start_stream():
             "redirect_to": "/auth",
         }), 401
 
-    mic_connected, mic_message = _get_microphone_status(force=True)
-    if not mic_connected:
-        return jsonify({
-            "error": mic_message or "Por favor, conecta el microfono para iniciar.",
-            "microphone_required": True,
-        }), 409
+    allow_no_mic = settings.get("allow_no_mic", False)
+    use_mic = not allow_no_mic
+
+    if use_mic:
+        mic_connected, mic_message = _get_microphone_status(force=True)
+        if not mic_connected:
+            return jsonify({
+                "error": mic_message or "Por favor, conecta el microfono para iniciar.",
+                "microphone_required": True,
+            }), 409
 
     data = request.json or {}
     title = data.get("title") or config.DEFAULT_STREAM_TITLE
@@ -266,7 +274,7 @@ def start_stream():
 
         with _start_lock:
             try:
-                _run_start_sequence(title, privacy)
+                _run_start_sequence(title, privacy, use_mic)
             except Exception as e:
                 _broadcast_id = None
                 _share_url = None
@@ -278,7 +286,7 @@ def start_stream():
     return jsonify({"state": "preparing"})
 
 
-def _run_start_sequence(title, privacy):
+def _run_start_sequence(title, privacy, use_mic=True):
     """Ejecuta secuencia de inicio del broadcast."""
     global _broadcast_id, _share_url
 
@@ -317,7 +325,7 @@ def _run_start_sequence(title, privacy):
         return
 
     manager.add_log("Iniciando pipeline de streaming...")
-    manager.start(rtmp_url)
+    manager.start(rtmp_url, use_mic)
 
 
 # ==============================================================================
@@ -439,6 +447,44 @@ def auth_unlink():
     """Desvincula la cuenta borrando los tokens locales."""
     youtube_api.unlink()
     return jsonify({"ok": True})
+
+
+# ==============================================================================
+# SECCION 9B: AJUSTES Y RED (OPCIONES AVANZADAS)
+# ==============================================================================
+
+
+@app.route("/api/settings", methods=["GET"])
+def get_settings():
+    """Devuelve los ajustes editables actuales."""
+    return jsonify(settings.load())
+
+
+@app.route("/api/settings", methods=["POST"])
+def post_settings():
+    """Actualiza ajustes (solo se aceptan claves conocidas)."""
+    data = request.json or {}
+    return jsonify(settings.update(data))
+
+
+@app.route("/api/network/status")
+def network_status():
+    """Tipo de conexion a internet actual (ethernet/wifi/none)."""
+    return jsonify(network.status())
+
+
+@app.route("/api/network/wifi/scan")
+def network_wifi_scan():
+    """Lista redes WiFi disponibles."""
+    return jsonify(network.scan())
+
+
+@app.route("/api/network/wifi/connect", methods=["POST"])
+def network_wifi_connect():
+    """Conecta a una red WiFi dada."""
+    data = request.json or {}
+    ok, message = network.connect(data.get("ssid", ""), data.get("password", ""))
+    return jsonify({"ok": ok, "message": message}), (200 if ok else 400)
 
 
 # ==============================================================================

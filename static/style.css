@@ -803,3 +803,150 @@ select {
 .hidden {
     display: none !important;
 }
+
+/* ---- Header right + indicador de conexion ---- */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.conn-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border: 1px solid var(--card-border);
+    background: var(--card);
+    white-space: nowrap;
+}
+
+.conn-icon {
+    display: inline-flex;
+    align-items: center;
+}
+
+.conn-ethernet { color: var(--green); border-color: var(--green-glow); }
+.conn-wifi { color: var(--green); border-color: var(--green-glow); }
+.conn-none { color: var(--red); border-color: var(--red-glow); }
+
+/* ---- Opciones avanzadas ---- */
+.adv-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.adv-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.adv-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.adv-sub {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+}
+
+.adv-divider {
+    height: 1px;
+    background: var(--card-border);
+    margin: 1.1rem 0;
+}
+
+.adv-wifi {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.adv-select,
+.adv-input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-sm);
+    padding: 0.7rem 0.85rem;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+.adv-select:focus,
+.adv-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.adv-connect {
+    width: 100%;
+}
+
+.adv-msg {
+    font-size: 0.82rem;
+    margin-top: 0.2rem;
+}
+
+.adv-msg-ok { color: var(--green); }
+.adv-msg-err { color: var(--red); }
+
+/* ---- Switch (toggle) ---- */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 26px;
+    flex-shrink: 0;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.switch-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    transition: background 0.2s;
+}
+
+.switch-slider::before {
+    content: "";
+    position: absolute;
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    top: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+}
+
+.switch input:checked + .switch-slider {
+    background: var(--accent);
+}
+
+.switch input:checked + .switch-slider::before {
+    transform: translateX(18px);
+}
+
+.switch input:disabled + .switch-slider {
+    opacity: 0.6;
+    cursor: not-allowed;
+}

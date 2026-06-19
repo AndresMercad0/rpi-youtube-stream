@@ -76,6 +76,23 @@ Device Flow sin dominio).
 
 ---
 
+## Opciones avanzadas
+
+En el panel, el botón **"Opciones avanzadas"** abre dos controles:
+
+- **Transmitir sin micrófono:** por defecto la app exige un micrófono. Con este
+  interruptor activo puedes iniciar sin micrófono; el audio se envía en silencio
+  (una pista de silencio, para que YouTube reciba un stream bien formado).
+- **Conexión WiFi:** la Pi se espera conectada por cable, pero desde aquí puedes
+  buscar redes WiFi y conectarte (útil para pasar a WiFi y luego quitar el cable).
+  El header muestra un indicador de si estás por **cable**, **WiFi** o **sin internet**.
+
+> La conexión WiFi usa NetworkManager (`nmcli`) con un permiso sudo acotado que
+> agrega `install.sh`. Si actualizas una Pi ya instalada y quieres esta función,
+> vuelve a correr `./install.sh` (no solo `git pull`).
+
+---
+
 ## Estructura
 
 ```
@@ -85,6 +102,8 @@ rpi-youtube-stream/
 ├── config.py              # Configuracion (credenciales OAuth, hardware)
 ├── youtube_api.py         # Device Flow + Live Streaming API (auto-stream)
 ├── stream_manager.py      # Pipeline libcamera-vid | ffmpeg | ffplay
+├── settings.py            # Ajustes editables (opciones avanzadas)
+├── network.py             # Estado de red y WiFi (nmcli)
 ├── requirements.txt
 ├── .env.example           # Overrides opcionales
 ├── SETUP-GOOGLE.md         # Setup unico del dueno (cliente OAuth)

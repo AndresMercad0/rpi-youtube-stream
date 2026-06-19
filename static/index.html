@@ -21,9 +21,15 @@
                 </svg>
                 <h1>En vivo</h1>
             </div>
-            <div id="status-pill" class="status-pill idle">
-                <span class="status-dot"></span>
-                <span id="status-text">Sin transmisión</span>
+            <div class="header-right">
+                <div id="conn-indicator" class="conn-indicator conn-none" title="Conexión a internet">
+                    <span id="conn-icon" class="conn-icon"></span>
+                    <span id="conn-label" class="conn-label">...</span>
+                </div>
+                <div id="status-pill" class="status-pill idle">
+                    <span class="status-dot"></span>
+                    <span id="status-text">Sin transmisión</span>
+                </div>
             </div>
         </header>
 
@@ -157,6 +163,41 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"></path></svg>
                 Reiniciar todo
             </button>
+        </div>
+
+        <button id="btn-advanced-toggle" class="btn-logs-toggle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 008 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H0a2 2 0 010-4h.09A1.65 1.65 0 001.6 8a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H6a1.65 1.65 0 001-1.51V0a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V6a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" transform="translate(1.5 1.5)"></path></svg>
+            Opciones avanzadas
+        </button>
+
+        <div id="advanced-panel" class="card hidden">
+            <div class="adv-row">
+                <div class="adv-text">
+                    <span class="adv-title">Transmitir sin micrófono</span>
+                    <span class="adv-sub">Inicia con audio en silencio, sin exigir micrófono conectado.</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-no-mic">
+                    <span class="switch-slider"></span>
+                </label>
+            </div>
+
+            <div class="adv-divider"></div>
+
+            <div class="adv-wifi">
+                <span class="adv-title">Conexión WiFi</span>
+                <span class="adv-sub" id="wifi-current">Conexión actual: comprobando...</span>
+
+                <div class="adv-field">
+                    <button id="btn-wifi-scan" class="btn btn-sm btn-glass">Buscar redes</button>
+                </div>
+                <select id="wifi-ssid" class="adv-select">
+                    <option value="">Pulsa "Buscar redes"</option>
+                </select>
+                <input type="password" id="wifi-password" class="adv-input" placeholder="Contraseña de la red" autocomplete="off">
+                <button id="btn-wifi-connect" class="btn btn-accent adv-connect">Conectar a WiFi</button>
+                <p id="wifi-message" class="adv-msg hidden"></p>
+            </div>
         </div>
 
         <div id="logs-panel" class="logs-panel hidden">

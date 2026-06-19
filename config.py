@@ -109,3 +109,9 @@ HEALTH_CHECK_DELAY = 3  # segundos despues de inicio para verificar proceso
 
 VISITORS_LOG_FILE = APP_DIR / ".visitors.csv"
 VISITORS_LOG_FIELDS = ["timestamp", "broadcast_id", "nombre", "ip", "city", "country", "user_agent"]
+
+# ==============================================================================
+# SECCION 8: AJUSTES EDITABLES (OPCIONES AVANZADAS)
+# ==============================================================================
+
+SETTINGS_FILE = APP_DIR / ".settings.json"

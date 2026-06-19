@@ -129,7 +129,7 @@ class StreamManager:
     # Inicio de streaming
     # -------------------------------------------------------------------------
 
-    def start(self, rtmp_url):
+    def start(self, rtmp_url, use_mic=True):
         """Inicia el pipeline de streaming hacia la URL RTMP dada."""
         if not rtmp_url:
             raise RuntimeError("No se recibio la URL RTMP del stream.")
@@ -143,10 +143,11 @@ class StreamManager:
             self._rtmp_url = rtmp_url
 
         try:
-            cmd = self._build_command(rtmp_url)
+            cmd = self._build_command(rtmp_url, use_mic)
             env = self._build_env()
 
-            self.add_log(f"Lanzando pipeline: {config.VIDEO_BIN} | ffmpeg | ffplay")
+            audio_mode = "microfono" if use_mic else "sin microfono (audio silencioso)"
+            self.add_log(f"Lanzando pipeline ({audio_mode}): {config.VIDEO_BIN} | ffmpeg | ffplay")
 
             self._process = subprocess.Popen(
                 ["bash", "-c", cmd],
@@ -175,7 +176,7 @@ class StreamManager:
         env.setdefault("DISPLAY", ":0")
         return env
 
-    def _build_command(self, rtmp_url):
+    def _build_command(self, rtmp_url, use_mic=True):
         """Construye comando bash del pipeline."""
         # libcamera-vid: captura de video
         libcamera = (
@@ -190,14 +191,29 @@ class StreamManager:
             f"-o -"
         )
 
+        # Entrada de audio: microfono ALSA, o pista de silencio (sin microfono).
+        if use_mic:
+            audio_input = (
+                f"-thread_queue_size {config.AUDIO_THREAD_QUEUE} -f alsa -i {config.AUDIO_DEVICE} "
+            )
+            audio_extra = ""
+        else:
+            audio_input = (
+                f"-f lavfi -i anullsrc=channel_layout=stereo:sample_rate={config.AUDIO_SAMPLE_RATE} "
+            )
+            # Con audio infinito (anullsrc), -shortest hace que ffmpeg termine al
+            # acabar el video y no se quede colgado.
+            audio_extra = "-shortest "
+
         # ffmpeg: mezcla audio + video -> RTMP
         ffmpeg = (
             f"stdbuf -o0 ffmpeg -nostdin "
-            f"-thread_queue_size {config.AUDIO_THREAD_QUEUE} -f alsa -i {config.AUDIO_DEVICE} "
+            f"{audio_input}"
             f"-thread_queue_size {config.AUDIO_THREAD_QUEUE} -f {config.VIDEO_LIBAV_FORMAT} -i - "
             f"-c:v copy "
             f"-c:a aac -b:a {config.AUDIO_BITRATE} -ar {config.AUDIO_SAMPLE_RATE} "
             f"-fflags nobuffer -flags low_delay -max_interleave_delta 0 -g {config.VIDEO_INTRA} "
+            f"{audio_extra}"
             f'-f flv "{rtmp_url}"'
         )
 

@@ -90,6 +90,22 @@ const dom = {
     visitorsList: document.getElementById("visitors-list"),
     visitorsCount: document.getElementById("visitors-count"),
     btnClearVisitors: document.getElementById("btn-clear-visitors"),
+
+    // Conexion
+    connIndicator: document.getElementById("conn-indicator"),
+    connIcon: document.getElementById("conn-icon"),
+    connLabel: document.getElementById("conn-label"),
+
+    // Opciones avanzadas
+    btnAdvancedToggle: document.getElementById("btn-advanced-toggle"),
+    advancedPanel: document.getElementById("advanced-panel"),
+    toggleNoMic: document.getElementById("toggle-no-mic"),
+    wifiCurrent: document.getElementById("wifi-current"),
+    btnWifiScan: document.getElementById("btn-wifi-scan"),
+    wifiSsid: document.getElementById("wifi-ssid"),
+    wifiPassword: document.getElementById("wifi-password"),
+    btnWifiConnect: document.getElementById("btn-wifi-connect"),
+    wifiMessage: document.getElementById("wifi-message"),
 };
 
 // Variable global para broadcast_id actual
@@ -103,6 +119,7 @@ let currentState = "idle";
 let logsVisible = false;
 let logsInterval = null;
 let visitorsInterval = null;
+let advInitialized = false;
 
 // ==============================================================================
 // SECCION 3: AVISO DE VINCULACION
@@ -127,6 +144,7 @@ function updateUI(data) {
     const state = data.state || "idle";
     const authorized = data.authorized !== false;
     const micConnected = data.microphone_connected !== false;
+    const allowNoMic = data.allow_no_mic === true;
     currentState = state;
 
     // Status pill
@@ -139,7 +157,7 @@ function updateUI(data) {
 
     dom.btnStart.classList.toggle("hidden", !canStart);
     dom.btnStop.classList.toggle("hidden", !canStop);
-    dom.btnStart.disabled = !canStart || !authorized || !micConnected;
+    dom.btnStart.disabled = !canStart || !authorized || !(micConnected || allowNoMic);
     dom.btnStop.disabled = !canStop;
 
     // Controles de titulo/privacidad
@@ -166,13 +184,24 @@ function updateUI(data) {
         hideAuthWarning();
     }
 
-    // Microphone warning
-    if (!micConnected) {
+    // Microphone warning (se omite si "transmitir sin microfono" esta activo)
+    if (!micConnected && !allowNoMic) {
         dom.micWarning.classList.remove("hidden");
         dom.micWarningText.textContent = data.microphone_message || "Por favor, conecta el microfono.";
         dom.btnStart.disabled = true;
     } else {
         dom.micWarning.classList.add("hidden");
+    }
+
+    // Indicador de conexion (cable / wifi / sin internet)
+    if (data.connection) {
+        updateConnIndicator(data.connection);
+    }
+
+    // Reflejar el ajuste "sin microfono" en el toggle (solo la primera vez)
+    if (data.allow_no_mic !== undefined && !advInitialized) {
+        dom.toggleNoMic.checked = allowNoMic;
+        advInitialized = true;
     }
 
     // Share URL - generar link intermedio
@@ -507,6 +536,142 @@ dom.btnClearVisitors.addEventListener("click", async () => {
         dom.visitorsList.innerHTML = '<p class="visitors-empty">Registro limpiado</p>';
         dom.visitorsCount.textContent = "0";
     } catch {}
+});
+
+// ==============================================================================
+// SECCION 6B: CONEXION + OPCIONES AVANZADAS
+// ==============================================================================
+
+const CONN_ICONS = {
+    ethernet: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="9" width="18" height="11" rx="2"></rect><path d="M7 9V6h10v3"></path><path d="M9 20v-3M12 20v-3M15 20v-3"></path></svg>',
+    wifi: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0114.08 0"></path><path d="M1.42 9a16 16 0 0121.16 0"></path><path d="M8.53 16.11a6 6 0 016.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>',
+    none: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0119 12.55"></path><path d="M5 12.55a10.94 10.94 0 015.17-2.39"></path><path d="M10.71 5.05A16 16 0 0122.58 9"></path><path d="M1.42 9a15.91 15.91 0 014.7-2.88"></path><path d="M8.53 16.11a6 6 0 016.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>',
+};
+
+function updateConnIndicator(conn) {
+    const type = conn.type || "none";
+    dom.connIcon.innerHTML = CONN_ICONS[type] || CONN_ICONS.none;
+    dom.connIndicator.className = "conn-indicator conn-" + type;
+
+    if (type === "ethernet") {
+        dom.connLabel.textContent = "Cable";
+        dom.connIndicator.title = "Conectado por cable";
+        dom.wifiCurrent.textContent = "Conexión actual: cable (Ethernet)";
+    } else if (type === "wifi") {
+        dom.connLabel.textContent = "WiFi";
+        dom.connIndicator.title = conn.ssid ? `WiFi: ${conn.ssid}` : "Conectado por WiFi";
+        dom.wifiCurrent.textContent = conn.ssid
+            ? `Conexión actual: WiFi (${conn.ssid})`
+            : "Conexión actual: WiFi";
+    } else {
+        dom.connLabel.textContent = "Sin internet";
+        dom.connIndicator.title = "Sin conexión a internet";
+        dom.wifiCurrent.textContent = "Conexión actual: sin internet";
+    }
+}
+
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, c => (
+        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+    ));
+}
+
+function showWifiMessage(text, ok) {
+    dom.wifiMessage.textContent = text;
+    dom.wifiMessage.classList.remove("hidden");
+    dom.wifiMessage.classList.toggle("adv-msg-ok", ok);
+    dom.wifiMessage.classList.toggle("adv-msg-err", !ok);
+}
+
+function hideWifiMessage() {
+    dom.wifiMessage.classList.add("hidden");
+}
+
+// ---- Mostrar/ocultar panel avanzado ----
+dom.btnAdvancedToggle.addEventListener("click", () => {
+    const isHidden = dom.advancedPanel.classList.toggle("hidden");
+    dom.btnAdvancedToggle.classList.toggle("open", !isHidden);
+});
+
+// ---- Toggle "transmitir sin microfono" ----
+dom.toggleNoMic.addEventListener("change", async () => {
+    const value = dom.toggleNoMic.checked;
+    dom.toggleNoMic.disabled = true;
+    try {
+        const res = await fetch("/api/settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ allow_no_mic: value }),
+        });
+        if (!res.ok) throw new Error("settings");
+        fetchStatus();
+    } catch {
+        dom.toggleNoMic.checked = !value; // revertir si falla
+    } finally {
+        dom.toggleNoMic.disabled = false;
+    }
+});
+
+// ---- WiFi: buscar redes ----
+dom.btnWifiScan.addEventListener("click", async () => {
+    dom.btnWifiScan.disabled = true;
+    dom.btnWifiScan.textContent = "Buscando...";
+    hideWifiMessage();
+    try {
+        const res = await fetch("/api/network/wifi/scan");
+        const data = await res.json();
+        const nets = data.networks || [];
+
+        if (data.error) {
+            showWifiMessage(data.error, false);
+        } else if (nets.length === 0) {
+            showWifiMessage("No se encontraron redes WiFi.", false);
+        }
+
+        dom.wifiSsid.innerHTML = nets.length
+            ? nets.map(n =>
+                `<option value="${escapeHtml(n.ssid)}">${escapeHtml(n.ssid)}${n.secure ? " 🔒" : ""} (${n.signal}%)</option>`
+              ).join("")
+            : '<option value="">Sin redes</option>';
+    } catch {
+        showWifiMessage("Error al escanear redes.", false);
+    } finally {
+        dom.btnWifiScan.disabled = false;
+        dom.btnWifiScan.textContent = "Buscar redes";
+    }
+});
+
+// ---- WiFi: conectar ----
+dom.btnWifiConnect.addEventListener("click", async () => {
+    const ssid = dom.wifiSsid.value;
+    const password = dom.wifiPassword.value;
+
+    if (!ssid) {
+        showWifiMessage("Elige una red primero.", false);
+        return;
+    }
+
+    dom.btnWifiConnect.disabled = true;
+    dom.btnWifiConnect.textContent = "Conectando...";
+    hideWifiMessage();
+    try {
+        const res = await fetch("/api/network/wifi/connect", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ssid, password }),
+        });
+        const data = await res.json();
+        showWifiMessage(data.message || (data.ok ? "Conectado." : "No se pudo conectar."), data.ok);
+        if (data.ok) {
+            dom.wifiPassword.value = "";
+            fetchStatus();
+        }
+    } catch {
+        showWifiMessage("Error de conexión al intentar conectar.", false);
+    } finally {
+        dom.btnWifiConnect.disabled = false;
+        dom.btnWifiConnect.textContent = "Conectar a WiFi";
+    }
 });
 
 // ==============================================================================
