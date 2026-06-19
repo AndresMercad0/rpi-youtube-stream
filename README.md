@@ -13,7 +13,7 @@ preview en una pantalla LCD.
 ## Inicio rapido (en la Raspberry Pi)
 
 ```bash
-git clone <URL-de-tu-repo> rpi-youtube-stream
+git clone https://github.com/AndresMercad0/rpi-youtube-stream.git
 cd rpi-youtube-stream
 ./install.sh
 ```

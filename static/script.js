@@ -18,7 +18,6 @@
 
 const POLL_INTERVAL = 3000;           // ms - intervalo de polling de estado
 const LOG_POLL_INTERVAL = 2000;        // ms - intervalo de polling de logs
-const AUTH_REDIRECT_DELAY_MS = 1200;   // ms - delay antes de redirect a auth
 const AUTH_PAGE_PATH = "/auth";
 const DEFAULT_TITLE = "Transmisión en vivo";
 
@@ -103,33 +102,21 @@ let currentBroadcastId = null;
 let currentState = "idle";
 let logsVisible = false;
 let logsInterval = null;
-let authRedirectTimer = null;
 let visitorsInterval = null;
 
 // ==============================================================================
-// SECCION 3: AUTH REDIRECT
+// SECCION 3: AVISO DE VINCULACION
 // ==============================================================================
+// Nota: ya NO redirige automaticamente a /auth (eso causaba un bucle al pulsar
+// "Volver al panel principal"). Solo muestra el aviso con el boton para vincular.
 
-function clearAuthRedirect() {
-    if (authRedirectTimer) {
-        clearTimeout(authRedirectTimer);
-        authRedirectTimer = null;
-    }
-    dom.authWarning.classList.remove("redirecting");
+function showAuthWarning() {
+    dom.authWarning.classList.remove("hidden");
+    dom.authWarningText.textContent = "YouTube no vinculado";
 }
 
-function scheduleAuthRedirect(message) {
-    if (window.location.pathname === AUTH_PAGE_PATH || authRedirectTimer) {
-        return;
-    }
-
-    dom.authWarningText.textContent = message || "YouTube no vinculado. Redirigiendo...";
-    dom.authWarning.classList.remove("hidden");
-    dom.authWarning.classList.add("redirecting");
-
-    authRedirectTimer = setTimeout(() => {
-        window.location.href = `${AUTH_PAGE_PATH}?reason=auth_required`;
-    }, AUTH_REDIRECT_DELAY_MS);
+function hideAuthWarning() {
+    dom.authWarning.classList.add("hidden");
 }
 
 // ==============================================================================
@@ -173,13 +160,10 @@ function updateUI(data) {
 
     // Auth warning
     if (!authorized) {
-        dom.authWarning.classList.remove("hidden");
+        showAuthWarning();
         dom.btnStart.disabled = true;
-        scheduleAuthRedirect(data.auth_error || "Sesion de YouTube expirada. Redirigiendo...");
     } else {
-        dom.authWarning.classList.add("hidden");
-        dom.authWarningText.textContent = "YouTube no vinculado";
-        clearAuthRedirect();
+        hideAuthWarning();
     }
 
     // Microphone warning
@@ -333,7 +317,7 @@ dom.btnStart.addEventListener("click", async () => {
 
         if (!res.ok) {
             if (res.status === 401 || data.auth_required) {
-                scheduleAuthRedirect(data.error || "Sesion expirada. Redirigiendo...");
+                updateUI({ state: "idle", authorized: false });
                 return;
             }
 
