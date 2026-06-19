@@ -158,13 +158,24 @@ sudo systemctl enable --now "$SERVICE_NAME"
 # Resumen
 # -----------------------------------------------------------------------------
 sleep 2
+
+# Detectar la IP local de la Pi (la que ven otros dispositivos en la red).
+IP_ADDR="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}')"
+[ -z "$IP_ADDR" ] && IP_ADDR="$(hostname -I 2>/dev/null | awk '{print $1}')"
+
 echo
 echo "==================================================================="
 echo " Listo. El servicio esta corriendo."
 echo "==================================================================="
 echo
-echo " 1. Abre el panel:   http://localhost:$PORT"
-echo "    (o desde otro dispositivo:  http://<IP-de-la-Pi>:$PORT )"
+if [ -n "$IP_ADDR" ]; then
+    echo " 1. Abre el panel desde otro dispositivo (recomendado):"
+    echo "        http://$IP_ADDR:$PORT"
+    echo "    O en la misma Pi:  http://localhost:$PORT"
+else
+    echo " 1. Abre el panel:   http://localhost:$PORT"
+    echo "    (o desde otro dispositivo:  http://<IP-de-la-Pi>:$PORT )"
+fi
 echo
 echo " 2. Haz clic en 'Vincular con YouTube' e inicia sesion con tu cuenta."
 echo
