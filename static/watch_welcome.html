@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenido | Transmisión en vivo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f0f15;
+            --card: #1c1c25;
+            --text: #ffffff;
+            --text-dim: #9ca3af;
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --accent-glow: rgba(99, 102, 241, 0.2);
+            --border: #2d2d3a;
+            --error: #ef4444;
+            --radius: 16px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text);
+            padding: 1rem;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2.5rem 2rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            text-align: center;
+        }
+
+        .logo {
+            width: 64px;
+            height: 64px;
+            background: var(--accent-glow);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            color: var(--accent);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        p {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-dim);
+            margin-bottom: 0.5rem;
+        }
+
+        input {
+            width: 100%;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.875rem 1rem;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        input::placeholder {
+            color: #4b5563;
+        }
+
+        button {
+            width: 100%;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.875rem;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        button:hover {
+            background: var(--accent-hover);
+        }
+
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .error-msg {
+            color: var(--error);
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14v-4z"></path>
+                <rect x="3" y="6" width="12" height="12" rx="2" ry="2"></rect>
+            </svg>
+        </div>
+        <h1>Bienvenido</h1>
+        <p>Por favor, ingresa tu nombre para unirte a la transmisión en vivo.</p>
+
+        <form id="join-form">
+            <div class="form-group">
+                <label for="nombre">Tu nombre completo</label>
+                <input type="text" id="nombre" placeholder="Ej. Juan Pérez" required autocomplete="name" autofocus>
+                <div id="error-msg" class="error-msg"></div>
+            </div>
+
+            <button type="submit" id="submit-btn">
+                <span>Entrar a la transmisión</span>
+                <div class="spinner" id="spinner"></div>
+            </button>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('join-form');
+        const input = document.getElementById('nombre');
+        const btn = document.getElementById('submit-btn');
+        const spinner = document.getElementById('spinner');
+        const btnText = btn.querySelector('span');
+        const errorMsg = document.getElementById('error-msg');
+
+        // Extraer broadcast_id de la URL actual (/watch/XXXXX)
+        const broadcastId = window.location.pathname.split('/').pop();
+
+        // Recordar nombre anterior si existe
+        const savedName = localStorage.getItem('visitor_name');
+        if (savedName) {
+            input.value = savedName;
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const nombre = input.value.trim();
+            if (!nombre) {
+                showError('Por favor ingresa tu nombre');
+                return;
+            }
+
+            // Guardar nombre para futuras visitas
+            localStorage.setItem('visitor_name', nombre);
+
+            setLoading(true);
+
+            try {
+                const response = await fetch(`/api/watch/${broadcastId}/join`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                } else {
+                    showError(data.error || 'No se pudo conectar a la transmisión');
+                    setLoading(false);
+                }
+            } catch (err) {
+                showError('Error de conexión. Intenta nuevamente.');
+                setLoading(false);
+            }
+        });
+
+        function setLoading(isLoading) {
+            btn.disabled = isLoading;
+            input.disabled = isLoading;
+            spinner.style.display = isLoading ? 'block' : 'none';
+            btnText.style.display = isLoading ? 'none' : 'block';
+            if (!isLoading) errorMsg.style.display = 'none';
+        }
+
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorMsg.style.display = 'block';
+            input.focus();
+        }
+    </script>
+</body>
+</html>

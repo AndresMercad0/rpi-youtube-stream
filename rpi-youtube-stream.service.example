@@ -1,0 +1,24 @@
+# Plantilla de referencia del servicio systemd.
+# NO necesitas editar esto a mano: install.sh genera el archivo real en
+# /etc/systemd/system/rpi-youtube-stream.service con los valores correctos
+# (usuario y rutas) de tu Raspberry Pi.
+#
+# Se incluye solo como referencia o para instalacion manual.
+
+[Unit]
+Description=rpi-youtube-stream API server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=CAMBIA_ESTE_USUARIO
+WorkingDirectory=/ruta/al/repo/rpi-youtube-stream
+EnvironmentFile=-/ruta/al/repo/rpi-youtube-stream/.env
+Environment=PORT=8082
+ExecStart=/ruta/al/repo/rpi-youtube-stream/.venv/bin/python /ruta/al/repo/rpi-youtube-stream/app.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

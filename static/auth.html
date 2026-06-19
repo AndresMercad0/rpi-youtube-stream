@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Vincular YouTube</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        .device-steps {
+            text-align: left;
+            margin: 0.75rem 0 1.25rem;
+            padding-left: 1.1rem;
+            color: var(--text-secondary, #9aa3b2);
+            font-size: 0.92rem;
+            line-height: 1.7;
+        }
+        .device-code-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 0.5rem auto 0.75rem;
+            padding: 0.85rem 1rem;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 0.35rem;
+            font-variant-numeric: tabular-nums;
+        }
+        .device-qr {
+            display: block;
+            margin: 0.5rem auto 0.75rem;
+            width: 168px;
+            height: 168px;
+            border-radius: 12px;
+            background: #fff;
+            padding: 8px;
+        }
+        .device-hint { font-size: 0.82rem; color: var(--text-secondary, #9aa3b2); margin-top: 0.25rem; }
+        .device-status {
+            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+            margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-secondary, #9aa3b2);
+        }
+        .device-spinner {
+            width: 14px; height: 14px; border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.25); border-top-color: #fff;
+            animation: device-spin 0.8s linear infinite;
+        }
+        @keyframes device-spin { to { transform: rotate(360deg); } }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="auth-body">
+    <main class="auth-container">
+        <section class="auth-card">
+            <div class="auth-badge" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="17 8 21 12 17 16"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+            </div>
+            <p class="auth-meta">Vincular cuenta de YouTube</p>
+            <h1 class="auth-title">Inicia sesion con tu cuenta de Google</h1>
+
+            <!-- Estado: cargando -->
+            <div id="view-loading">
+                <p class="auth-text">Generando codigo de vinculacion...</p>
+                <div class="device-status"><span class="device-spinner"></span> Un momento</div>
+            </div>
+
+            <!-- Estado: codigo listo -->
+            <div id="view-code" class="hidden">
+                <ol class="device-steps">
+                    <li>Abre el enlace de abajo (o escanea el QR con tu telefono).</li>
+                    <li>Inicia sesion con la cuenta de YouTube donde quieres transmitir.</li>
+                    <li>Escribe este codigo cuando te lo pidan:</li>
+                </ol>
+
+                <div class="device-code-box"><span id="user-code">----------</span></div>
+
+                <img id="device-qr" class="device-qr hidden" alt="Codigo QR" />
+
+                <a id="verification-link" class="btn btn-accent auth-primary" href="#" target="_blank" rel="noopener">
+                    Abrir pagina de Google
+                </a>
+                <p class="device-hint" id="verification-url-text"></p>
+
+                <div class="device-status">
+                    <span class="device-spinner"></span>
+                    <span id="poll-status-text">Esperando a que autorices...</span>
+                </div>
+                <p class="device-hint" id="expiry-text"></p>
+            </div>
+
+            <!-- Estado: exito -->
+            <div id="view-success" class="hidden">
+                <p class="auth-text">Cuenta vinculada correctamente. Redirigiendo al panel...</p>
+            </div>
+
+            <!-- Estado: error -->
+            <div id="view-error" class="hidden">
+                <p id="error-message" class="auth-error" style="margin-bottom:1rem;"></p>
+                <button id="btn-retry" class="btn btn-accent auth-primary">Generar nuevo codigo</button>
+            </div>
+
+            <a class="btn auth-secondary" href="/">Volver al panel principal</a>
+        </section>
+    </main>
+
+    <script>
+        const views = {
+            loading: document.getElementById('view-loading'),
+            code: document.getElementById('view-code'),
+            success: document.getElementById('view-success'),
+            error: document.getElementById('view-error'),
+        };
+        const userCodeEl = document.getElementById('user-code');
+        const verificationLink = document.getElementById('verification-link');
+        const verificationUrlText = document.getElementById('verification-url-text');
+        const qrImg = document.getElementById('device-qr');
+        const pollStatusText = document.getElementById('poll-status-text');
+        const expiryText = document.getElementById('expiry-text');
+        const errorMessage = document.getElementById('error-message');
+        const btnRetry = document.getElementById('btn-retry');
+
+        let pollTimer = null;
+        let expiryTimer = null;
+
+        function showView(name) {
+            Object.keys(views).forEach(k => views[k].classList.toggle('hidden', k !== name));
+        }
+
+        function stopTimers() {
+            if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+            if (expiryTimer) { clearInterval(expiryTimer); expiryTimer = null; }
+        }
+
+        function showError(message) {
+            stopTimers();
+            errorMessage.textContent = message || 'Ocurrio un error al vincular.';
+            showView('error');
+        }
+
+        async function startDeviceFlow() {
+            stopTimers();
+            showView('loading');
+
+            let info;
+            try {
+                const res = await fetch('/api/auth/device/start', { method: 'POST' });
+                info = await res.json();
+                if (!res.ok) throw new Error(info.error || 'No se pudo iniciar la vinculacion.');
+            } catch (err) {
+                showError(err.message);
+                return;
+            }
+
+            // Mostrar codigo y enlace
+            userCodeEl.textContent = info.user_code;
+            verificationLink.href = info.verification_url;
+            verificationUrlText.textContent = info.verification_url;
+
+            // QR (mejor esfuerzo; si falla, el enlace y el codigo siguen sirviendo)
+            const qrData = encodeURIComponent(info.verification_url);
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=152x152&data=${qrData}`;
+            qrImg.onload = () => qrImg.classList.remove('hidden');
+            qrImg.onerror = () => qrImg.classList.add('hidden');
+
+            showView('code');
+
+            // Cuenta regresiva de expiracion
+            let remaining = info.expires_in || 1800;
+            const renderExpiry = () => {
+                const m = Math.floor(remaining / 60);
+                const s = String(remaining % 60).padStart(2, '0');
+                expiryText.textContent = `El codigo expira en ${m}:${s}`;
+            };
+            renderExpiry();
+            expiryTimer = setInterval(() => {
+                remaining -= 1;
+                if (remaining <= 0) {
+                    showError('El codigo expiro. Genera uno nuevo.');
+                    return;
+                }
+                renderExpiry();
+            }, 1000);
+
+            // Polling
+            let interval = (info.interval || 5) * 1000;
+            const poll = async () => {
+                let data;
+                try {
+                    const res = await fetch('/api/auth/device/poll', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ device_code: info.device_code }),
+                    });
+                    data = await res.json();
+                } catch {
+                    // Error de red transitorio: reintentar.
+                    pollTimer = setTimeout(poll, interval);
+                    return;
+                }
+
+                if (data.status === 'authorized') {
+                    stopTimers();
+                    showView('success');
+                    setTimeout(() => { window.location.href = '/?auth=ok'; }, 1200);
+                    return;
+                }
+                if (data.status === 'slow_down') {
+                    interval += 2000;
+                } else if (data.status === 'error') {
+                    showError(data.message);
+                    return;
+                }
+                pollTimer = setTimeout(poll, interval);
+            };
+            pollTimer = setTimeout(poll, interval);
+        }
+
+        btnRetry.addEventListener('click', startDeviceFlow);
+
+        // Iniciar automaticamente al cargar la pagina.
+        startDeviceFlow();
+    </script>
+</body>
+</html>

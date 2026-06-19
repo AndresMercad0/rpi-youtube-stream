@@ -1,0 +1,16 @@
+# Secretos y datos locales (NUNCA versionar)
+.youtube_tokens.json
+.visitors.csv
+.env
+
+# Entorno virtual de Python
+.venv/
+venv/
+
+# Cache de Python
+__pycache__/
+*.py[cod]
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
