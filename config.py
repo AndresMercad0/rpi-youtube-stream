@@ -9,7 +9,7 @@ Modulos:
   - YouTube: OAuth2 Device Flow + Live Streaming API
   - Video: libcamera-vid (RPi Camera Module)
   - Audio: ALSA + ffmpeg
-  - Preview: ffplay sobre framebuffer LCD
+  - Preview: ffmpeg -f fbdev sobre el framebuffer de la LCD (sin escritorio)
 
 A diferencia de la version original, aqui NO hay stream key fija: la app
 descubre o crea el stream por API una vez que la cuenta inicia sesion.
@@ -102,12 +102,11 @@ AUDIO_BITRATE = "160k"
 AUDIO_THREAD_QUEUE = 512
 
 # ==============================================================================
-# SECCION 5: PREVIEW (FFPLAY + FRAMEBUFFER LCD)
+# SECCION 5: PREVIEW (FFMPEG -> FRAMEBUFFER LCD)
 # ==============================================================================
-
-# Framebuffer de la pantalla LCD para el preview. Con LCD-show la LCD suele ser
-# /dev/fb1, pero en otras Pi es /dev/fb0. Se auto-detecta el que exista (prefiere
-# fb1); se puede forzar con la variable de entorno FFPLAY_SDL_FBDEV.
+# El preview se dibuja directo al framebuffer de la LCD con ffmpeg, sin necesitar
+# escritorio/X. Se auto-detectan el dispositivo, la resolucion y el formato de
+# pixel. Todo es sobreescribible por variables de entorno.
 
 def _detect_fbdev():
     for fb in ("/dev/fb1", "/dev/fb0"):
@@ -116,8 +115,35 @@ def _detect_fbdev():
     return "/dev/fb1"
 
 
-FFPLAY_SDL_FBDEV = os.environ.get("FFPLAY_SDL_FBDEV") or _detect_fbdev()
-FFPLAY_SCALE = os.environ.get("FFPLAY_SCALE", "482:257")
+PREVIEW_FBDEV = os.environ.get("PREVIEW_FBDEV") or _detect_fbdev()
+
+
+def _fb_sysfs(attr):
+    name = os.path.basename(PREVIEW_FBDEV)
+    try:
+        with open(f"/sys/class/graphics/{name}/{attr}") as fh:
+            return fh.read().strip()
+    except OSError:
+        return None
+
+
+def _detect_preview_scale():
+    size = _fb_sysfs("virtual_size")  # p.ej. "480,320"
+    if size and "," in size:
+        w, h = size.split(",")[:2]
+        if w.isdigit() and h.isdigit():
+            return f"{w}:{h}"
+    return "480:320"
+
+
+def _detect_preview_pixfmt():
+    # 16 bpp (lo usual en LCD SPI) -> rgb565le; 32 bpp -> bgra.
+    return "bgra" if _fb_sysfs("bits_per_pixel") == "32" else "rgb565le"
+
+
+PREVIEW_SCALE = os.environ.get("PREVIEW_SCALE") or _detect_preview_scale()
+PREVIEW_PIXFMT = os.environ.get("PREVIEW_PIXFMT") or _detect_preview_pixfmt()
+PREVIEW_FPS = int(os.environ.get("PREVIEW_FPS", "15"))
 
 # ==============================================================================
 # SECCION 6: HEALTH CHECK

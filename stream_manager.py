@@ -2,7 +2,7 @@
 """
 Stream Manager - rpi-youtube-stream
 ===================================
-Gestion del pipeline de streaming: libcamera-vid | ffmpeg | ffplay
+Gestion del pipeline de streaming: camara -> ffmpeg (RTMP + preview a la LCD)
 
 La URL RTMP (direccion + stream key) la entrega youtube_api por API y se pasa
 a start(); ya no se lee una stream key fija de la configuracion.
@@ -16,8 +16,8 @@ Estados:
   - error: fallo en el pipeline
 
 Pipeline:
-  libcamera-vid -> tee -> ffmpeg (RTMP YouTube)
-                     -> ffplay (preview LCD)
+  camara -> tee -> ffmpeg (RTMP YouTube)
+              -> ffmpeg -f fbdev (preview en la LCD, sin escritorio)
 
 Autor: Andres Mercado
 """
@@ -147,7 +147,7 @@ class StreamManager:
             env = self._build_env()
 
             audio_mode = "microfono" if use_mic else "sin microfono (audio silencioso)"
-            self.add_log(f"Lanzando pipeline ({audio_mode}): {config.VIDEO_BIN} | ffmpeg | ffplay")
+            self.add_log(f"Lanzando pipeline ({audio_mode}): {config.VIDEO_BIN} -> ffmpeg (RTMP + preview LCD)")
 
             self._process = subprocess.Popen(
                 ["bash", "-c", cmd],
@@ -169,12 +169,12 @@ class StreamManager:
             raise
 
     def _build_env(self):
-        """Construye variables de entorno para el pipeline."""
-        env = os.environ.copy()
-        env["SDL_FBDEV"] = config.FFPLAY_SDL_FBDEV
-        env.setdefault("XDG_RUNTIME_DIR", "/run/user/1000")
-        env.setdefault("DISPLAY", ":0")
-        return env
+        """Construye variables de entorno para el pipeline.
+
+        El preview ya no usa ffplay/SDL/X, sino ffmpeg escribiendo directo al
+        framebuffer, asi que no se necesita DISPLAY ni SDL_FBDEV.
+        """
+        return os.environ.copy()
 
     def _build_command(self, rtmp_url, use_mic=True):
         """Construye comando bash del pipeline."""
@@ -217,16 +217,16 @@ class StreamManager:
             f'-f flv "{rtmp_url}"'
         )
 
-        # ffplay: preview local en LCD
-        ffplay = (
-            f"stdbuf -o0 ffplay -fflags nobuffer -flags low_delay -sync ext "
-            f"-analyzeduration 0 -probesize 32 -framedrop "
-            f'-vf "scale={config.FFPLAY_SCALE}" '
-            f"-autoexit -"
+        # Preview en la LCD: ffmpeg escribe directo al framebuffer (sin escritorio).
+        # Se convierte al formato del framebuffer (rgb565le en 16bpp, bgra en 32bpp).
+        preview = (
+            f"stdbuf -o0 ffmpeg -nostdin -f {config.VIDEO_LIBAV_FORMAT} -i - -an "
+            f'-vf "fps={config.PREVIEW_FPS},scale={config.PREVIEW_SCALE},format={config.PREVIEW_PIXFMT}" '
+            f"-f fbdev {config.PREVIEW_FBDEV}"
         )
 
         # Pipeline con tee para bifurcar salida
-        return f"{libcamera} | tee >({ffmpeg}) >({ffplay} 2>/dev/null || true) > /dev/null"
+        return f"{libcamera} | tee >({ffmpeg}) >({preview} 2>/dev/null || true) > /dev/null"
 
     # -------------------------------------------------------------------------
     # Detencion de streaming
