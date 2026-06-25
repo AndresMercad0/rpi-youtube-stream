@@ -34,6 +34,13 @@
             letter-spacing: 0.35rem;
             font-variant-numeric: tabular-nums;
         }
+        .device-copy {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin: 0 auto 0.9rem;
+        }
+        .device-copy svg { flex-shrink: 0; }
         .device-qr {
             display: block;
             margin: 0.5rem auto 0.75rem;
@@ -86,6 +93,11 @@
 
                 <div class="device-code-box"><span id="user-code">----------</span></div>
 
+                <button id="btn-copy-code" class="btn btn-glass device-copy" type="button">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path></svg>
+                    <span id="copy-code-text">Copiar código</span>
+                </button>
+
                 <img id="device-qr" class="device-qr hidden" alt="Codigo QR" />
 
                 <a id="verification-link" class="btn btn-accent auth-primary" href="#" target="_blank" rel="noopener">
@@ -130,6 +142,8 @@
         const expiryText = document.getElementById('expiry-text');
         const errorMessage = document.getElementById('error-message');
         const btnRetry = document.getElementById('btn-retry');
+        const btnCopyCode = document.getElementById('btn-copy-code');
+        const copyCodeText = document.getElementById('copy-code-text');
 
         let pollTimer = null;
         let expiryTimer = null;
@@ -228,6 +242,38 @@
         }
 
         btnRetry.addEventListener('click', startDeviceFlow);
+
+        // Copiar el codigo. Funciona por HTTPS (tunel) y por HTTP en IP local.
+        function copyText(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                return navigator.clipboard.writeText(text);
+            }
+            return new Promise((resolve, reject) => {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                let ok = false;
+                try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+                document.body.removeChild(ta);
+                ok ? resolve() : reject();
+            });
+        }
+
+        btnCopyCode.addEventListener('click', () => {
+            const code = (userCodeEl.textContent || '').trim();
+            if (!code || code.startsWith('-')) return;  // ignora el placeholder
+            copyText(code).then(() => {
+                copyCodeText.textContent = '¡Copiado!';
+                setTimeout(() => { copyCodeText.textContent = 'Copiar código'; }, 2000);
+            }).catch(() => {
+                copyCodeText.textContent = 'No se pudo copiar';
+                setTimeout(() => { copyCodeText.textContent = 'Copiar código'; }, 2000);
+            });
+        });
 
         // Iniciar automaticamente al cargar la pagina.
         startDeviceFlow();
