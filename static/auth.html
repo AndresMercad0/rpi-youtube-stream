@@ -86,7 +86,7 @@
             <!-- Estado: codigo listo -->
             <div id="view-code" class="hidden">
                 <ol class="device-steps">
-                    <li>Abre el enlace de abajo (o escanea el QR con tu telefono).</li>
+                    <li>Abre el enlace de abajo (o escanea el QR con otro dispositivo).</li>
                     <li>Inicia sesion con la cuenta de YouTube donde quieres transmitir.</li>
                     <li>Escribe este codigo cuando te lo pidan:</li>
                 </ol>
@@ -109,6 +109,7 @@
                     <span class="device-spinner"></span>
                     <span id="poll-status-text">Esperando a que autorices...</span>
                 </div>
+                <p class="device-hint">Cuando autorices en Google, vuelve a esta pantalla y se detectará sola.</p>
                 <p class="device-hint" id="expiry-text"></p>
             </div>
 
@@ -159,8 +160,113 @@
 
         function showError(message) {
             stopTimers();
+            clearFlow();
+            currentDeviceCode = null;
             errorMessage.textContent = message || 'Ocurrio un error al vincular.';
             showView('error');
+        }
+
+        // Persistencia del flujo en sessionStorage (sobrevive recargas del
+        // navegador movil, que suele recargar/suspender la pestana al volver).
+        const STORAGE_KEY = 'rys_device_flow';
+        function saveFlow(info, expiresAt) {
+            try {
+                sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    device_code: info.device_code,
+                    user_code: info.user_code,
+                    verification_url: info.verification_url,
+                    interval: info.interval || 5,
+                    expiresAt: expiresAt,
+                }));
+            } catch (e) {}
+        }
+        function loadFlow() {
+            try {
+                const f = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null');
+                if (!f || !f.expiresAt || Date.now() >= f.expiresAt) { clearFlow(); return null; }
+                return f;
+            } catch (e) { return null; }
+        }
+        function clearFlow() {
+            try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
+        }
+
+        let currentDeviceCode = null;
+        let currentInterval = 5000;
+        let currentExpiresAt = 0;
+
+        function renderExpiry() {
+            const remaining = Math.max(0, Math.round((currentExpiresAt - Date.now()) / 1000));
+            const m = Math.floor(remaining / 60);
+            const s = String(remaining % 60).padStart(2, '0');
+            expiryText.textContent = `El codigo expira en ${m}:${s}`;
+        }
+
+        function scheduleNextPoll(delay) {
+            if (pollTimer) clearTimeout(pollTimer);
+            pollTimer = setTimeout(pollOnce, delay === undefined ? currentInterval : delay);
+        }
+
+        async function pollOnce() {
+            if (!currentDeviceCode) return;
+            let data;
+            try {
+                const res = await fetch('/api/auth/device/poll', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_code: currentDeviceCode }),
+                });
+                data = await res.json();
+            } catch {
+                scheduleNextPoll(currentInterval);  // red transitoria: reintentar
+                return;
+            }
+
+            if (data.status === 'authorized') {
+                stopTimers();
+                clearFlow();
+                showView('success');
+                setTimeout(() => { window.location.href = '/?auth=ok'; }, 1200);
+                return;
+            }
+            if (data.status === 'slow_down') {
+                currentInterval += 2000;
+            } else if (data.status === 'error') {
+                showError(data.message);
+                return;
+            }
+            scheduleNextPoll(currentInterval);
+        }
+
+        // Renderiza el codigo + QR y arranca polling/expiracion. Sirve para un
+        // flujo nuevo o para reanudar uno guardado.
+        function beginFlow(info, expiresAt) {
+            stopTimers();
+            currentDeviceCode = info.device_code;
+            currentInterval = (info.interval || 5) * 1000;
+            currentExpiresAt = expiresAt;
+
+            userCodeEl.textContent = info.user_code;
+            verificationLink.href = info.verification_url;
+            verificationUrlText.textContent = info.verification_url;
+
+            const qrData = encodeURIComponent(info.verification_url);
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=152x152&data=${qrData}`;
+            qrImg.onload = () => qrImg.classList.remove('hidden');
+            qrImg.onerror = () => qrImg.classList.add('hidden');
+
+            showView('code');
+
+            renderExpiry();
+            expiryTimer = setInterval(() => {
+                if (Date.now() >= currentExpiresAt) {
+                    showError('El codigo expiro. Genera uno nuevo.');
+                    return;
+                }
+                renderExpiry();
+            }, 1000);
+
+            scheduleNextPoll(currentInterval);
         }
 
         async function startDeviceFlow() {
@@ -177,68 +283,9 @@
                 return;
             }
 
-            // Mostrar codigo y enlace
-            userCodeEl.textContent = info.user_code;
-            verificationLink.href = info.verification_url;
-            verificationUrlText.textContent = info.verification_url;
-
-            // QR (mejor esfuerzo; si falla, el enlace y el codigo siguen sirviendo)
-            const qrData = encodeURIComponent(info.verification_url);
-            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=152x152&data=${qrData}`;
-            qrImg.onload = () => qrImg.classList.remove('hidden');
-            qrImg.onerror = () => qrImg.classList.add('hidden');
-
-            showView('code');
-
-            // Cuenta regresiva de expiracion
-            let remaining = info.expires_in || 1800;
-            const renderExpiry = () => {
-                const m = Math.floor(remaining / 60);
-                const s = String(remaining % 60).padStart(2, '0');
-                expiryText.textContent = `El codigo expira en ${m}:${s}`;
-            };
-            renderExpiry();
-            expiryTimer = setInterval(() => {
-                remaining -= 1;
-                if (remaining <= 0) {
-                    showError('El codigo expiro. Genera uno nuevo.');
-                    return;
-                }
-                renderExpiry();
-            }, 1000);
-
-            // Polling
-            let interval = (info.interval || 5) * 1000;
-            const poll = async () => {
-                let data;
-                try {
-                    const res = await fetch('/api/auth/device/poll', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ device_code: info.device_code }),
-                    });
-                    data = await res.json();
-                } catch {
-                    // Error de red transitorio: reintentar.
-                    pollTimer = setTimeout(poll, interval);
-                    return;
-                }
-
-                if (data.status === 'authorized') {
-                    stopTimers();
-                    showView('success');
-                    setTimeout(() => { window.location.href = '/?auth=ok'; }, 1200);
-                    return;
-                }
-                if (data.status === 'slow_down') {
-                    interval += 2000;
-                } else if (data.status === 'error') {
-                    showError(data.message);
-                    return;
-                }
-                pollTimer = setTimeout(poll, interval);
-            };
-            pollTimer = setTimeout(poll, interval);
+            const expiresAt = Date.now() + (info.expires_in || 1800) * 1000;
+            saveFlow(info, expiresAt);
+            beginFlow(info, expiresAt);
         }
 
         btnRetry.addEventListener('click', startDeviceFlow);
@@ -275,8 +322,22 @@
             });
         });
 
-        // Iniciar automaticamente al cargar la pagina.
-        startDeviceFlow();
+        // Al volver a esta pestana (tras autorizar en Google), consultar de
+        // inmediato: asi se detecta la autorizacion hecha en otra pestana o app.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && currentDeviceCode) {
+                scheduleNextPoll(0);
+            }
+        });
+
+        // Al cargar: reanudar un flujo activo (si la pagina se recargo) o iniciar
+        // uno nuevo.
+        const savedFlow = loadFlow();
+        if (savedFlow) {
+            beginFlow(savedFlow, savedFlow.expiresAt);
+        } else {
+            startDeviceFlow();
+        }
     </script>
 </body>
 </html>
