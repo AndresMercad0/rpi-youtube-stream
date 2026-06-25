@@ -957,3 +957,13 @@ select {
     gap: 0.4rem;
     align-items: flex-start;
 }
+
+/* Orden visual al final del panel: primero los logs ("Ver mas"), luego las
+   opciones avanzadas. El contenedor es flex-column, asi que usamos 'order'. */
+#logs-panel {
+    order: 1;
+}
+#btn-advanced-toggle,
+#advanced-panel {
+    order: 2;
+}

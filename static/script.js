@@ -559,20 +559,39 @@ const CONN_ICONS = {
 
 function updateConnIndicator(conn) {
     const type = conn.type || "none";
-    dom.connIcon.innerHTML = CONN_ICONS[type] || CONN_ICONS.none;
-    dom.connIndicator.className = "conn-indicator conn-" + type;
+    const wifiOn = conn.wifi_connected === true;
+    const wifiSsid = conn.wifi_ssid || conn.ssid || "";
 
     if (type === "ethernet") {
-        dom.connLabel.textContent = "Cable";
-        dom.connIndicator.title = "Conectado por cable";
-        dom.wifiCurrent.textContent = "Conexión actual: cable (Ethernet)";
+        dom.connIcon.innerHTML = CONN_ICONS.ethernet;
+        dom.connIndicator.className = "conn-indicator conn-ethernet";
+        if (wifiOn) {
+            dom.connLabel.textContent = "Cable + WiFi";
+            dom.connIndicator.title = `Internet por cable. WiFi también conectado${wifiSsid ? ` a ${wifiSsid}` : ""}.`;
+            dom.wifiCurrent.textContent = `Conexión: cable (Ethernet) + WiFi conectado${wifiSsid ? ` a ${wifiSsid}` : ""}`;
+        } else {
+            dom.connLabel.textContent = "Cable";
+            dom.connIndicator.title = "Conectado por cable";
+            dom.wifiCurrent.textContent = "Conexión actual: cable (Ethernet)";
+        }
     } else if (type === "wifi") {
+        dom.connIcon.innerHTML = CONN_ICONS.wifi;
+        dom.connIndicator.className = "conn-indicator conn-wifi";
         dom.connLabel.textContent = "WiFi";
-        dom.connIndicator.title = conn.ssid ? `WiFi: ${conn.ssid}` : "Conectado por WiFi";
-        dom.wifiCurrent.textContent = conn.ssid
-            ? `Conexión actual: WiFi (${conn.ssid})`
+        dom.connIndicator.title = wifiSsid ? `WiFi: ${wifiSsid}` : "Conectado por WiFi";
+        dom.wifiCurrent.textContent = wifiSsid
+            ? `Conexión actual: WiFi (${wifiSsid})`
             : "Conexión actual: WiFi";
+    } else if (wifiOn) {
+        // Sin ruta por defecto, pero WiFi asociado (p.ej. sin salida a internet)
+        dom.connIcon.innerHTML = CONN_ICONS.wifi;
+        dom.connIndicator.className = "conn-indicator conn-wifi";
+        dom.connLabel.textContent = "WiFi";
+        dom.connIndicator.title = wifiSsid ? `WiFi: ${wifiSsid} (sin salida a internet)` : "WiFi conectado (sin internet)";
+        dom.wifiCurrent.textContent = `WiFi conectado${wifiSsid ? ` a ${wifiSsid}` : ""} (sin salida a internet)`;
     } else {
+        dom.connIcon.innerHTML = CONN_ICONS.none;
+        dom.connIndicator.className = "conn-indicator conn-none";
         dom.connLabel.textContent = "Sin internet";
         dom.connIndicator.title = "Sin conexión a internet";
         dom.wifiCurrent.textContent = "Conexión actual: sin internet";

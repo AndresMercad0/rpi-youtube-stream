@@ -100,17 +100,32 @@ def status():
     """
     Estado de conexion a internet.
 
-    Returns dict: {"type": "ethernet"|"wifi"|"none", "iface": str|None, "ssid": str|None}
+    Returns dict:
+      type:           "ethernet"|"wifi"|"none"  (por donde sale el trafico a internet)
+      iface, ssid:    de la ruta por defecto
+      wifi_connected: bool  (True si el WiFi esta asociado, aunque NO sea la ruta
+                            por defecto, p.ej. conectado por cable y WiFi a la vez)
+      wifi_ssid:      str|None  (SSID del WiFi conectado)
     """
     iface = _default_route_iface()
+    wifi_ssid = _current_ssid()  # SSID conectado aunque no sea la ruta por defecto
+    wifi_connected = wifi_ssid is not None
+
     if not iface or iface.startswith("lo"):
-        return {"type": "none", "iface": iface, "ssid": None}
+        ptype = "none"
+    elif iface.startswith(("wlan", "wlp", "wlx")):
+        ptype = "wifi"
+    else:
+        # eth0, end0, enxXXXX, usb0, etc.
+        ptype = "ethernet"
 
-    if iface.startswith(("wlan", "wlp", "wlx")):
-        return {"type": "wifi", "iface": iface, "ssid": _current_ssid()}
-
-    # eth0, end0, enxXXXX, usb0, etc.
-    return {"type": "ethernet", "iface": iface, "ssid": None}
+    return {
+        "type": ptype,
+        "iface": iface,
+        "ssid": wifi_ssid if ptype == "wifi" else None,
+        "wifi_connected": wifi_connected,
+        "wifi_ssid": wifi_ssid,
+    }
 
 
 # ==============================================================================
