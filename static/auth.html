@@ -109,7 +109,7 @@
                     <span class="device-spinner"></span>
                     <span id="poll-status-text">Esperando a que autorices...</span>
                 </div>
-                <p class="device-hint">Cuando autorices en Google, vuelve a esta pantalla y se detectará sola.</p>
+                <p class="device-hint">Cuando autorices en Google, regresa a la app (a esta pantalla o a la principal); se detecta sola en unos segundos.</p>
                 <p class="device-hint" id="expiry-text"></p>
             </div>
 
@@ -211,11 +211,9 @@
             if (!currentDeviceCode) return;
             let data;
             try {
-                const res = await fetch('/api/auth/device/poll', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ device_code: currentDeviceCode }),
-                });
+                // El servidor hace el polling real a Google; aqui solo
+                // consultamos si ya quedo vinculado.
+                const res = await fetch('/api/auth/device/status');
                 data = await res.json();
             } catch {
                 scheduleNextPoll(currentInterval);  // red transitoria: reintentar
@@ -229,9 +227,7 @@
                 setTimeout(() => { window.location.href = '/?auth=ok'; }, 1200);
                 return;
             }
-            if (data.status === 'slow_down') {
-                currentInterval += 2000;
-            } else if (data.status === 'error') {
+            if (data.status === 'error') {
                 showError(data.message);
                 return;
             }

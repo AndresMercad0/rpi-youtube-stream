@@ -63,6 +63,12 @@ _broadcast_title = None
 _share_url = None
 _start_lock = threading.Lock()
 
+# Estado del Device Flow. El polling a Google se hace en el SERVIDOR (un hilo en
+# segundo plano), asi la vinculacion se completa aunque el navegador se cierre o
+# no pueda volver a la pestana de /auth (caso tipico en Safari de iPhone).
+_device_flow_lock = threading.Lock()
+_device_flow_state = {"gen": 0, "status": "idle", "message": None}
+
 # Cache de estado de microfono
 _MIC_STATUS_CACHE_TTL = 5.0
 _last_mic_status = {
@@ -411,15 +417,60 @@ def clear_logs():
 # ==============================================================================
 
 
+def _poll_device_in_background(device_code, interval, expires_in, gen):
+    """Consulta a Google hasta que el usuario autorice (o expire). Corre en el
+    servidor; al autorizar, poll_device_flow guarda los tokens. Asi la vinculacion
+    se completa aunque el navegador ya no este en /auth."""
+    deadline = time.time() + max(60, expires_in)
+    wait = max(2, interval)
+    while time.time() < deadline:
+        time.sleep(wait)
+        try:
+            result, message = youtube_api.poll_device_flow(device_code)
+        except Exception as e:
+            result, message = "error", str(e)
+
+        if result == "slow_down":
+            wait += 2
+            continue
+        if result == "pending":
+            continue
+
+        # authorized o error: estado final (solo si sigue siendo el flujo actual)
+        with _device_flow_lock:
+            if _device_flow_state["gen"] == gen:
+                if result == "authorized":
+                    _device_flow_state.update({"status": "authorized", "message": None})
+                else:
+                    _device_flow_state.update({"status": "error", "message": message})
+        return
+
+    with _device_flow_lock:
+        if _device_flow_state["gen"] == gen:
+            _device_flow_state.update({"status": "error", "message": "El codigo expiro. Genera uno nuevo."})
+
+
 @app.route("/api/auth/device/start", methods=["POST"])
 def auth_device_start():
-    """Inicia el Device Flow. Devuelve codigo y URL de verificacion."""
+    """Inicia el Device Flow y arranca el polling en el servidor."""
     try:
         info = youtube_api.start_device_flow()
     except youtube_api.AuthorizationError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": f"Error iniciando vinculacion: {e}"}), 500
+
+    with _device_flow_lock:
+        _device_flow_state["gen"] += 1
+        gen = _device_flow_state["gen"]
+        _device_flow_state["status"] = "pending"
+        _device_flow_state["message"] = None
+
+    threading.Thread(
+        target=_poll_device_in_background,
+        args=(info["device_code"], info["interval"], info["expires_in"], gen),
+        daemon=True,
+    ).start()
 
     return jsonify({
         "device_code": info["device_code"],
@@ -428,6 +479,16 @@ def auth_device_start():
         "interval": info["interval"],
         "expires_in": info["expires_in"],
     })
+
+
+@app.route("/api/auth/device/status")
+def auth_device_status():
+    """Estado de la vinculacion en curso (la completa el servidor en segundo plano)."""
+    if youtube_api.is_authorized():
+        return jsonify({"status": "authorized", "message": None})
+    with _device_flow_lock:
+        st = dict(_device_flow_state)
+    return jsonify({"status": st.get("status", "pending"), "message": st.get("message")})
 
 
 @app.route("/api/auth/device/poll", methods=["POST"])
