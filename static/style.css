@@ -841,6 +841,16 @@ select {
     gap: 1rem;
 }
 
+/* Fila de opcion deshabilitada (p.ej. "sin microfono" cuando hay microfono):
+   se atenua toda la fila y el switch queda en escala de grises. */
+.adv-row.is-disabled {
+    opacity: 0.45;
+}
+.adv-row.is-disabled .switch-slider {
+    filter: grayscale(1);
+    cursor: not-allowed;
+}
+
 .adv-text {
     display: flex;
     flex-direction: column;

@@ -110,6 +110,7 @@ const dom = {
     btnUnlink: document.getElementById("btn-unlink"),
     brandTitle: document.getElementById("brand-title"),
     noMicSub: document.getElementById("no-mic-sub"),
+    noMicRow: document.getElementById("no-mic-row"),
 };
 
 // Variable global para broadcast_id actual
@@ -212,6 +213,7 @@ function updateUI(data) {
     // "Transmitir sin microfono" se deshabilita si hay microfono conectado
     // (en ese caso siempre se usa el microfono).
     dom.toggleNoMic.disabled = micConnected;
+    dom.noMicRow.classList.toggle("is-disabled", micConnected);
     dom.noMicSub.textContent = micConnected
         ? "Hay un micrófono conectado: se usará el micrófono."
         : "Inicia con audio en silencio, sin exigir micrófono conectado.";
