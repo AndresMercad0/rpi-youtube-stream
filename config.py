@@ -105,7 +105,18 @@ AUDIO_THREAD_QUEUE = 512
 # SECCION 5: PREVIEW (FFPLAY + FRAMEBUFFER LCD)
 # ==============================================================================
 
-FFPLAY_SDL_FBDEV = os.environ.get("FFPLAY_SDL_FBDEV", "/dev/fb1")
+# Framebuffer de la pantalla LCD para el preview. Con LCD-show la LCD suele ser
+# /dev/fb1, pero en otras Pi es /dev/fb0. Se auto-detecta el que exista (prefiere
+# fb1); se puede forzar con la variable de entorno FFPLAY_SDL_FBDEV.
+
+def _detect_fbdev():
+    for fb in ("/dev/fb1", "/dev/fb0"):
+        if os.path.exists(fb):
+            return fb
+    return "/dev/fb1"
+
+
+FFPLAY_SDL_FBDEV = os.environ.get("FFPLAY_SDL_FBDEV") or _detect_fbdev()
 FFPLAY_SCALE = os.environ.get("FFPLAY_SCALE", "482:257")
 
 # ==============================================================================
