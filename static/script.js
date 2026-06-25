@@ -108,6 +108,8 @@ const dom = {
     wifiMessage: document.getElementById("wifi-message"),
     channelName: document.getElementById("channel-name"),
     btnUnlink: document.getElementById("btn-unlink"),
+    brandTitle: document.getElementById("brand-title"),
+    noMicSub: document.getElementById("no-mic-sub"),
 };
 
 // Variable global para broadcast_id actual
@@ -149,6 +151,11 @@ function updateUI(data) {
     const micConnected = data.microphone_connected !== false;
     const allowNoMic = data.allow_no_mic === true;
     currentState = state;
+
+    // Titulo de la app (marca configurable; no es un indicador de estado)
+    if (data.brand) {
+        dom.brandTitle.textContent = data.brand;
+    }
 
     // Status pill
     dom.statusPill.className = "status-pill " + state;
@@ -201,6 +208,13 @@ function updateUI(data) {
     } else {
         dom.micWarning.classList.add("hidden");
     }
+
+    // "Transmitir sin microfono" se deshabilita si hay microfono conectado
+    // (en ese caso siempre se usa el microfono).
+    dom.toggleNoMic.disabled = micConnected;
+    dom.noMicSub.textContent = micConnected
+        ? "Hay un micrófono conectado: se usará el micrófono."
+        : "Inicia con audio en silencio, sin exigir micrófono conectado.";
 
     // Indicador de conexion (cable / wifi / sin internet)
     if (data.connection) {

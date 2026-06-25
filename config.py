@@ -28,8 +28,9 @@ from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent
 
-# Nombre visible de la app (puedes sobreescribirlo con la variable BRAND_NAME).
-BRAND_NAME = os.environ.get("BRAND_NAME", "Transmision en vivo")
+# Nombre visible de la app, mostrado en el header (NO es un indicador de estado).
+# Puedes personalizarlo por Pi con la variable BRAND_NAME (ej. un nombre o marca).
+BRAND_NAME = os.environ.get("BRAND_NAME", "Transmision")
 
 # Titulo por defecto del broadcast cuando el usuario no escribe uno.
 DEFAULT_STREAM_TITLE = os.environ.get("DEFAULT_STREAM_TITLE", "Transmision en vivo")

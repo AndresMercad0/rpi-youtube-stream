@@ -19,7 +19,7 @@
                     <polygon points="23 7 16 12 23 17 23 7"></polygon>
                     <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
                 </svg>
-                <h1>En vivo</h1>
+                <h1 id="brand-title">Transmisión</h1>
             </div>
             <div class="header-right">
                 <div id="conn-indicator" class="conn-indicator conn-none" title="Conexión a internet">
@@ -159,9 +159,9 @@
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
                 Ver más...
             </button>
-            <button id="btn-emergency" class="btn-emergency">
+            <button id="btn-emergency" class="btn-emergency" title="Detiene y reinicia los procesos de transmisión si algo se atora. No reinicia la Raspberry Pi.">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"></path></svg>
-                Reiniciar todo
+                Reinicio de emergencia
             </button>
         </div>
 
@@ -174,7 +174,7 @@
             <div class="adv-row">
                 <div class="adv-text">
                     <span class="adv-title">Transmitir sin micrófono</span>
-                    <span class="adv-sub">Inicia con audio en silencio, sin exigir micrófono conectado.</span>
+                    <span class="adv-sub" id="no-mic-sub">Inicia con audio en silencio, sin exigir micrófono conectado.</span>
                 </div>
                 <label class="switch">
                     <input type="checkbox" id="toggle-no-mic">

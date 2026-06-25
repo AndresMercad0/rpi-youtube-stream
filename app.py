@@ -247,15 +247,19 @@ def start_stream():
         }), 401
 
     allow_no_mic = settings.get("allow_no_mic", False)
-    use_mic = not allow_no_mic
+    mic_connected, mic_message = _get_microphone_status(force=True)
 
-    if use_mic:
-        mic_connected, mic_message = _get_microphone_status(force=True)
-        if not mic_connected:
-            return jsonify({
-                "error": mic_message or "Por favor, conecta el microfono para iniciar.",
-                "microphone_required": True,
-            }), 409
+    # Si hay microfono conectado, se usa siempre. Si no hay, se permite audio
+    # silencioso solo cuando el ajuste "transmitir sin microfono" esta activo.
+    if mic_connected:
+        use_mic = True
+    elif allow_no_mic:
+        use_mic = False
+    else:
+        return jsonify({
+            "error": mic_message or "Por favor, conecta el microfono para iniciar.",
+            "microphone_required": True,
+        }), 409
 
     data = request.json or {}
     title = data.get("title") or config.DEFAULT_STREAM_TITLE
