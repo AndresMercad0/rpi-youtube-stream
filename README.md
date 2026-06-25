@@ -69,10 +69,11 @@ abrirlo desde cualquier lugar, puedes exponerlo con un tunel de Cloudflare:
 ./install.sh --with-cloudflared
 ```
 
-Eso instala el binario `cloudflared`. La configuracion del tunel (login y DNS)
-se hace aparte, segun tu cuenta de Cloudflare. El acceso remoto es solo para el
-panel; **no** tiene relacion con la vinculacion de YouTube (esa funciona por
-Device Flow sin dominio).
+Eso instala el binario `cloudflared`. Los pasos completos para crear el tunel
+(login, DNS y servicio), listos para copiar y pegar, estan en
+**[CLOUDFLARE.md](CLOUDFLARE.md)**. El acceso remoto es solo para el panel;
+**no** tiene relacion con la vinculacion de YouTube (esa funciona por Device Flow
+sin dominio).
 
 ---
 
@@ -107,6 +108,7 @@ rpi-youtube-stream/
 ├── requirements.txt
 ├── .env.example           # Overrides opcionales
 ├── SETUP-GOOGLE.md         # Setup unico del dueno (cliente OAuth)
+├── CLOUDFLARE.md           # Guia de acceso remoto (Cloudflare Tunnel)
 └── static/                # Panel web (HTML/CSS/JS)
 ```
 
