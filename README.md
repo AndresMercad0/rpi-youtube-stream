@@ -109,6 +109,7 @@ rpi-youtube-stream/
 ├── .env.example           # Overrides opcionales
 ├── SETUP-GOOGLE.md         # Setup unico del dueno (cliente OAuth)
 ├── CLOUDFLARE.md           # Guia de acceso remoto (Cloudflare Tunnel)
+├── HOST-SETUP.md           # Ajustes del SO en la Pi (consola, cursor, WiFi)
 └── static/                # Panel web (HTML/CSS/JS)
 ```
 
