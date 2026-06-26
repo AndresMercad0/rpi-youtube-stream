@@ -163,6 +163,10 @@ PREVIEW_FONT = os.environ.get("PREVIEW_FONT") or _detect_font()
 STANDBY_SUBTITLE = os.environ.get("STANDBY_SUBTITLE", "Listo para transmitir")
 PREPARING_SUBTITLE = os.environ.get("PREPARING_SUBTITLE", "Preparando transmision...")
 
+# URL que codifica el codigo QR de la pantalla de espera (ej. el dominio del
+# panel: https://streamariel.mevel.com.mx). Vacio = sin QR. Requiere 'qrencode'.
+STANDBY_URL = os.environ.get("STANDBY_URL", "")
+
 # ==============================================================================
 # SECCION 6: HEALTH CHECK
 # ==============================================================================

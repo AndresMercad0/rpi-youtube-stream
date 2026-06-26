@@ -50,7 +50,7 @@ echo "==================================================================="
 echo
 echo "==> [1/5] Instalando dependencias del sistema..."
 sudo apt-get update
-sudo apt-get install -y python3 python3-venv python3-pip ffmpeg alsa-utils fonts-dejavu-core
+sudo apt-get install -y python3 python3-venv python3-pip ffmpeg alsa-utils fonts-dejavu-core qrencode
 
 # Camara: el binario puede ser libcamera-vid (Bullseye) o rpicam-vid (Bookworm).
 if ! command -v libcamera-vid >/dev/null 2>&1 && ! command -v rpicam-vid >/dev/null 2>&1; then

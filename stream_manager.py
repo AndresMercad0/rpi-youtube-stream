@@ -24,6 +24,7 @@ Autor: Andres Mercado
 
 import collections
 import os
+import shutil
 import signal
 import subprocess
 import threading
@@ -67,6 +68,7 @@ class StreamManager:
         self._error_message = None
         self._cancelled = False
         self._rtmp_url = None
+        self._qr_path = None
         self._lock = threading.Lock()
         self._logs = collections.deque(maxlen=LOG_BUFFER_SIZE)
 
@@ -285,14 +287,43 @@ class StreamManager:
                 check=False,
             )
 
-    def _draw_screen(self, title, subtitle):
-        """Dibuja una pantalla simple (titulo + subtitulo) en la LCD via ffmpeg.
+    @staticmethod
+    def _safe_text(text):
+        """Limpia caracteres que romperian el filtro drawtext de ffmpeg."""
+        return (text or "").replace(":", " ").replace("'", " ").replace("\\", " ")[:42]
 
-        Se usa como pantalla de espera (no deja congelado el ultimo frame) y para
-        mensajes de estado. Si no hay fuente disponible, deja solo el fondo.
+    def _qr_image(self):
+        """Genera (una sola vez) un PNG con el QR de STANDBY_URL. Devuelve la ruta
+        o None si no hay URL o falta 'qrencode'."""
+        if not config.STANDBY_URL:
+            return None
+        if self._qr_path:
+            return self._qr_path
+        if shutil.which("qrencode") is None:
+            return None
+        path = "/tmp/rpi_youtube_stream_qr.png"
+        try:
+            subprocess.run(
+                ["qrencode", "-o", path, "-s", "8", config.STANDBY_URL],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=5,
+                check=True,
+            )
+            self._qr_path = path
+            return path
+        except Exception:
+            return None
+
+    def _draw_screen(self, title, subtitle):
+        """Dibuja una pantalla (titulo + subtitulo, y un QR si STANDBY_URL esta
+        configurado) en la LCD via ffmpeg. Se usa como pantalla de espera (no deja
+        congelado el ultimo frame) y para mensajes de estado.
         """
-        title = (title or "").replace(":", " ").replace("'", " ").replace("\\", " ")[:40]
-        subtitle = (subtitle or "").replace(":", " ").replace("'", " ").replace("\\", " ")[:40]
+        title = self._safe_text(title)
+        subtitle = self._safe_text(subtitle)
+        font = config.PREVIEW_FONT
+        qr = self._qr_image()
 
         w, h = "480", "320"
         if ":" in config.PREVIEW_SCALE:
@@ -302,14 +333,26 @@ class StreamManager:
             "ffmpeg", "-hide_banner", "-loglevel", "error",
             "-f", "lavfi", "-i", f"color=c=0x0a0a0f:s={w}x{h}",
         ]
-        if config.PREVIEW_FONT:
-            font = config.PREVIEW_FONT
+
+        if qr:
+            fc = "[1:v]scale=150:150[qr];[0:v][qr]overlay=(W-w)/2:60"
+            if font:
+                url_text = self._safe_text(
+                    config.STANDBY_URL.replace("https://", "").replace("http://", "").rstrip("/")
+                )
+                fc += (
+                    "[bg];[bg]"
+                    f"drawtext=fontfile={font}:text={title}:fontcolor=white:fontsize=26:x=(w-text_w)/2:y=22,"
+                    f"drawtext=fontfile={font}:text={subtitle}:fontcolor=0x9aa3b2:fontsize=17:x=(w-text_w)/2:y=224,"
+                    f"drawtext=fontfile={font}:text={url_text}:fontcolor=0x8a90f0:fontsize=16:x=(w-text_w)/2:y=250"
+                )
+            cmd += ["-i", qr, "-filter_complex", fc]
+        elif font:
             cmd += ["-vf", (
-                f"drawtext=fontfile={font}:text={title}:"
-                f"fontcolor=white:fontsize=30:x=(w-text_w)/2:y=(h/2)-34,"
-                f"drawtext=fontfile={font}:text={subtitle}:"
-                f"fontcolor=0x9aa3b2:fontsize=18:x=(w-text_w)/2:y=(h/2)+8"
+                f"drawtext=fontfile={font}:text={title}:fontcolor=white:fontsize=30:x=(w-text_w)/2:y=(h/2)-34,"
+                f"drawtext=fontfile={font}:text={subtitle}:fontcolor=0x9aa3b2:fontsize=18:x=(w-text_w)/2:y=(h/2)+8"
             )]
+
         cmd += [
             "-frames:v", "1",
             "-pix_fmt", config.PREVIEW_PIXFMT,
