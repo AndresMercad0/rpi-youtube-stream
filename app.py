@@ -300,6 +300,8 @@ def _run_start_sequence(title, privacy, use_mic=True):
     """Ejecuta secuencia de inicio del broadcast."""
     global _broadcast_id, _share_url
 
+    manager.show_preparing()
+
     # Paso 1: Crear broadcast (y obtener/crear stream + URL RTMP)
     if manager.cancelled:
         manager.add_log("Inicio cancelado antes de crear broadcast")
@@ -690,4 +692,12 @@ def clear_visitors():
 
 
 if __name__ == "__main__":
+    def _startup_standby():
+        # Esperar a que la consola termine su mensaje de inicio y luego mostrar la
+        # pantalla de espera en la LCD.
+        time.sleep(10)
+        if manager.state == "idle":
+            manager.show_standby()
+
+    threading.Thread(target=_startup_standby, daemon=True).start()
     app.run(host=config.HOST, port=config.PORT)

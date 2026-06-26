@@ -243,7 +243,7 @@ class StreamManager:
 
         self.add_log("Deteniendo procesos...")
         self._kill_all()
-        self._clear_preview()
+        self.show_standby()
         self.add_log("Procesos terminados")
 
         with self._lock:
@@ -262,7 +262,7 @@ class StreamManager:
             self._state = STATE_STOPPING
 
         self._kill_all()
-        self._clear_preview()
+        self.show_standby()
 
         with self._lock:
             self._state = STATE_IDLE
@@ -285,20 +285,55 @@ class StreamManager:
                 check=False,
             )
 
-    def _clear_preview(self):
-        """Limpia el framebuffer de la LCD (lo deja en negro) al terminar, para no
-        dejar congelado el ultimo frame de la transmision."""
+    def _draw_screen(self, title, subtitle):
+        """Dibuja una pantalla simple (titulo + subtitulo) en la LCD via ffmpeg.
+
+        Se usa como pantalla de espera (no deja congelado el ultimo frame) y para
+        mensajes de estado. Si no hay fuente disponible, deja solo el fondo.
+        """
+        title = (title or "").replace(":", " ").replace("'", " ").replace("\\", " ")[:40]
+        subtitle = (subtitle or "").replace(":", " ").replace("'", " ").replace("\\", " ")[:40]
+
+        w, h = "480", "320"
+        if ":" in config.PREVIEW_SCALE:
+            w, h = config.PREVIEW_SCALE.split(":")[:2]
+
+        cmd = [
+            "ffmpeg", "-hide_banner", "-loglevel", "error",
+            "-f", "lavfi", "-i", f"color=c=0x0a0a0f:s={w}x{h}",
+        ]
+        if config.PREVIEW_FONT:
+            font = config.PREVIEW_FONT
+            cmd += ["-vf", (
+                f"drawtext=fontfile={font}:text={title}:"
+                f"fontcolor=white:fontsize=30:x=(w-text_w)/2:y=(h/2)-34,"
+                f"drawtext=fontfile={font}:text={subtitle}:"
+                f"fontcolor=0x9aa3b2:fontsize=18:x=(w-text_w)/2:y=(h/2)+8"
+            )]
+        cmd += [
+            "-frames:v", "1",
+            "-pix_fmt", config.PREVIEW_PIXFMT,
+            "-f", "fbdev", config.PREVIEW_FBDEV,
+        ]
+
         try:
             subprocess.run(
-                f"cat /dev/zero > {config.PREVIEW_FBDEV}",
-                shell=True,
+                cmd,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                timeout=5,
+                timeout=8,
                 check=False,
             )
         except Exception:
             pass
+
+    def show_standby(self):
+        """Pantalla de espera en la LCD (cuando no se transmite)."""
+        self._draw_screen(config.BRAND_NAME, config.STANDBY_SUBTITLE)
+
+    def show_preparing(self):
+        """Mensaje en la LCD mientras se prepara la transmision."""
+        self._draw_screen(config.BRAND_NAME, config.PREPARING_SUBTITLE)
 
     def _terminate_process_group(self):
         """Envia SIGTERM/SIGKILL al grupo de procesos."""

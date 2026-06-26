@@ -145,6 +145,24 @@ PREVIEW_SCALE = os.environ.get("PREVIEW_SCALE") or _detect_preview_scale()
 PREVIEW_PIXFMT = os.environ.get("PREVIEW_PIXFMT") or _detect_preview_pixfmt()
 PREVIEW_FPS = int(os.environ.get("PREVIEW_FPS", "15"))
 
+
+def _detect_font():
+    for path in (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    ):
+        if os.path.exists(path):
+            return path
+    return None
+
+
+# Pantalla de espera / mensajes en la LCD cuando no se transmite.
+PREVIEW_FONT = os.environ.get("PREVIEW_FONT") or _detect_font()
+STANDBY_SUBTITLE = os.environ.get("STANDBY_SUBTITLE", "Listo para transmitir")
+PREPARING_SUBTITLE = os.environ.get("PREPARING_SUBTITLE", "Preparando transmision...")
+
 # ==============================================================================
 # SECCION 6: HEALTH CHECK
 # ==============================================================================
