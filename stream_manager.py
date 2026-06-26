@@ -243,6 +243,7 @@ class StreamManager:
 
         self.add_log("Deteniendo procesos...")
         self._kill_all()
+        self._clear_preview()
         self.add_log("Procesos terminados")
 
         with self._lock:
@@ -261,6 +262,7 @@ class StreamManager:
             self._state = STATE_STOPPING
 
         self._kill_all()
+        self._clear_preview()
 
         with self._lock:
             self._state = STATE_IDLE
@@ -282,6 +284,21 @@ class StreamManager:
                 stderr=subprocess.DEVNULL,
                 check=False,
             )
+
+    def _clear_preview(self):
+        """Limpia el framebuffer de la LCD (lo deja en negro) al terminar, para no
+        dejar congelado el ultimo frame de la transmision."""
+        try:
+            subprocess.run(
+                f"cat /dev/zero > {config.PREVIEW_FBDEV}",
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=5,
+                check=False,
+            )
+        except Exception:
+            pass
 
     def _terminate_process_group(self):
         """Envia SIGTERM/SIGKILL al grupo de procesos."""
